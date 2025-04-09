@@ -30,4 +30,4 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - run:  |
-       echo "tag name: ${github.event_name}"
+       echo "tag name: ${{ github.event_name }}"
