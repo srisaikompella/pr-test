@@ -14,9 +14,4 @@ spec:
     spec:
       containers:
       - name: nginx
-        image: ubuntu
-        command: |
-          echo "Hi kashi"
-          echo "sleeping ..."
-          sleep 4000
-
+        image: nginx:stable
