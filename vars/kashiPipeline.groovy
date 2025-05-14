@@ -4,7 +4,7 @@ def call(){
      stages{
        stage("demo stage"){
           steps{
-            echo "Hi I am demo stage"
+            echo "Hi I am demo stage - changes added by feature branch"
           }
        }
      }
