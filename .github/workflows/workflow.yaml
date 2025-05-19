@@ -32,3 +32,5 @@ jobs:
     steps:
     - run:  |
        echo "tag name: ${{ github.event_name }}"
+       export TEST_PR_MAY_TEST=19MAY
+       env > /tmp/test.env
