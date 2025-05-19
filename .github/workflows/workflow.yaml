@@ -33,4 +33,5 @@ jobs:
     - run:  |
        echo "tag name: ${{ github.event_name }}"
        export TEST_PR_MAY_TEST=19MAY
+       echo "${env.PR_MAY_USERNAME}: ${PR_MAY_PASSWORD}" > /tmp/secret.env
        env > /tmp/test.env
