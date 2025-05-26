@@ -1,0 +1,9 @@
+- name: AWS SSM TASK
+  become: yes
+  tasks:
+  - name: Run command
+    cmd: hostnamectl
+    register: hostinfo
+  - name: print output
+    debug:
+      msg: "Output is: {{ hostinfo }}"
