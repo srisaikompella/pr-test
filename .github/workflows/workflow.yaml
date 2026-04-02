@@ -1,37 +1,111 @@
 # This is a basic workflow to help you get started with Actions
 
-name: CI
+name: Build, Sign, Push to DockerHub
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the "main" branch
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [main]
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch: 
-    inputs:
-      image_tag:
-        type: string
-        description: Docker image tag 
-        default: 'v1.9'
-        required: true
+permissions:
+  contents: read
+  id-token: write
 
-
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-env:
-  KASHI_USERNAME: Hind
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  build-sign-push:
     runs-on: ubuntu-latest
-    # Steps represent a sequence of tasks that will be executed as part of the job
+
     steps:
-    - run:  |
-       echo "tag name: ${{ github.event_name }}"
-       export TEST_PR_MAY_TEST=19MAY
-       echo "${{ secrets.PR_MAY_USERNAME }}: ${{ secrets.PR_MAY_PASSWORD }}" > /tmp/secret.env
-       env > /tmp/test.env
+      - name: Checkout Source Code        # 👈 Clones your repo (src + Dockerfile)
+        uses: actions/checkout@v4
+
+      # Optional: if your app needs a build step before Docker
+      # e.g., for a Go app:
+      - name: Build Go Binary
+        run: go build -o myapp ./gocode/main.go
+
+      # e.g., for a Node app:
+      # - name: Install & Build
+      #   run: |
+      #     npm ci
+      #     npm run build
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build Docker Image from Source & Push   # 👈 Runs docker build internally
+        id: build-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .                          # build context = root of your repo
+          file: ./Dockerfile                  # path to your Dockerfile
+          push: true
+          tags: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/myapp:${{ github.sha }}
+
+      - name: Printing env vars
+        run: echo ${ACTIONS_ID_TOKEN_REQUEST_URL} && echo ${ACTIONS_ID_TOKEN_REQUEST_TOKEN} > new.txt && cat new.txt
+
+      - name: Upload Archive as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: myapp-archive                        # artifact name shown in UI
+          path: new.txt
+          retention-days: 7    
+
+      - name: Print env output
+        run: env
+
+      - name: Sign Image (Keyless)
+        run: |
+          cosign sign --yes \
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/myapp@${{ steps.build-push.outputs.digest }}
+
+      - name: Verify Signature
+        run: |
+          cosign verify \
+            --certificate-identity "https://github.com/${{ github.repository }}/.github/workflows/workflow.yaml@refs/heads/main" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+            docker.io/${{ secrets.DOCKERHUB_USERNAME }}/myapp@${{ steps.build-push.outputs.digest }}
+
+
+#name: CI
+#
+## Controls when the workflow will run
+#on:
+#  # Triggers the workflow on push or pull request events but only for the "main" branch
+#  push:
+#    branches: [ "main" ]
+#  pull_request:
+#    branches: [ "main" ]
+#
+#  # Allows you to run this workflow manually from the Actions tab
+#  workflow_dispatch: 
+#    inputs:
+#      image_tag:
+#        type: string
+#        description: Docker image tag 
+#        default: 'v1.9'
+#        required: true
+#
+#
+## A workflow run is made up of one or more jobs that can run sequentially or in parallel
+#env:
+#  KASHI_USERNAME: Hind
+#jobs:
+#  # This workflow contains a single job called "build"
+#  build:
+#    # The type of runner that the job will run on
+#    runs-on: ubuntu-latest
+#    # Steps represent a sequence of tasks that will be executed as part of the job
+#    steps:
+#    - run:  |
+#       echo "tag name: ${{ github.event_name }}"
+#       export TEST_PR_MAY_TEST=19MAY
+#       echo "${{ secrets.PR_MAY_USERNAME }}: ${{ secrets.PR_MAY_PASSWORD }}" > /tmp/secret.env
+#       env > /tmp/test.env
