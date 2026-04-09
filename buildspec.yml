@@ -1,0 +1,19 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.21.0
+  pre_build: 
+    commands:
+    - echo logging into ecr.
+  build:
+    commands:
+    
+    - echo build started on `date`  
+    - go build gocode/main.go -o myapp
+    - docker build -t  testimage .
+  post_build:
+    commands:
+    - echo build completed on `date`
+    - docker images
