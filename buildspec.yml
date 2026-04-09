@@ -11,7 +11,7 @@ phases:
     commands:
     
     - echo build started on `date`  
-    - go build gocode/main.go -o myapp
+    - go build -o myapp gocode/main.go 
     - docker build -t  testimage .
   post_build:
     commands:
